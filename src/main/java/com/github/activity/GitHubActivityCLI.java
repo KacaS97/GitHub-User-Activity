@@ -58,16 +58,17 @@ public class GitHubActivityCLI implements Runnable {
   }
 
   private void displayActivity(JsonNode events) {
-    Map<String, Function<JsonNode, String>> eventHandlers = new HashMap<>();
-    eventHandlers.put("PushEvent", this::handlePushEvent);
-    eventHandlers.put("IssuesEvent", this::handleIssuesEvent);
-    eventHandlers.put("WatchEvent", event -> "Starred " + event.get("repo").get("name").asText());
-    eventHandlers.put("ForkEvent", event -> "Forked " + event.get("repo").get("name").asText());
-    eventHandlers.put("CreateEvent", this::handleCreateEvent);
+    // Define event handlers using enum as keys
+    Map<EventType, Function<JsonNode, String>> eventHandlers = new HashMap<>();
+    eventHandlers.put(EventType.PUSH_EVENT, this::handlePushEvent);
+    eventHandlers.put(EventType.ISSUES_EVENT, this::handleIssuesEvent);
+    eventHandlers.put(EventType.WATCH_EVENT, event -> "Starred " + event.get("repo").get("name").asText());
+    eventHandlers.put(EventType.FORK_EVENT, event -> "Forked " + event.get("repo").get("name").asText());
+    eventHandlers.put(EventType.CREATE_EVENT, this::handleCreateEvent);
 
     for (JsonNode event : events) {
-      String type = event.get("type").asText();
-      String action = eventHandlers.getOrDefault(type, e -> defaultHandler(e, type)).apply(event);
+      EventType eventType = EventType.fromString(event.get("type").asText());
+      String action = eventHandlers.getOrDefault(eventType, e -> defaultHandler(e, eventType)).apply(event);
       System.out.println(action);
     }
   }
@@ -88,7 +89,7 @@ public class GitHubActivityCLI implements Runnable {
     return "Created " + refType + " in " + event.get("repo").get("name").asText();
   }
 
-  private String defaultHandler(JsonNode event, String type) {
-    return type.replace("Event", "") + " in " + event.get("repo").get("name").asText();
+  private String defaultHandler(JsonNode event, EventType type) {
+    return type.getDisplayName() + " in " + event.get("repo").get("name").asText();
   }
 }
